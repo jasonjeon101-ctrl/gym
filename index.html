@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="color-scheme" content="light dark">
+<title>헬스 출석 체크</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="헬스체크">
+<meta name="theme-color" content="#eef0ec" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151916" media="(prefers-color-scheme: dark)">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<style>
+/* Layout: phone-app shell — app bar, one scrolling screen per tab, fixed bottom tab bar */
+:root{
+  --bg:#eef0ec; --surface:#ffffff; --fg:#1d221f; --muted:#6b736e; --line:#d6dbd5;
+  --accent:#2f6b4f; --accent-fg:#ffffff; --warn:#b4462b;
+  --display:-apple-system,"SF Pro Display","Helvetica Neue",sans-serif;
+  --body:-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#151916; --surface:#1f2521; --fg:#e7ece8; --muted:#9aa49d; --line:#323a35;
+  --accent:#6fbf93; --accent-fg:#0e1611; --warn:#e8805f}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:14px;-webkit-tap-highlight-color:transparent;
+  -webkit-user-select:none;user-select:none;overscroll-behavior-y:none}
+[hidden]{display:none!important}
+.gutter{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.inner{max-width:460px;margin:0 auto}
+
+.appbar{position:sticky;top:0;z-index:5;background:var(--bg);padding-top:calc(env(safe-area-inset-top,0px) + 12px);padding-bottom:10px}
+.appbar h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em}
+main{padding-top:4px;padding-bottom:calc(84px + env(safe-area-inset-bottom,0px))}
+.screen{display:flex;flex-direction:column;gap:16px}
+
+.hero{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:18px;display:flex;align-items:center;gap:18px}
+.ring{position:relative;width:132px;height:132px;flex:none}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring .track{stroke:var(--line);fill:none}
+.ring .bar{stroke:var(--accent);fill:none;stroke-linecap:round;transition:stroke-dashoffset .35s ease}
+.ring .num{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.ring .num b{font-family:var(--display);font-size:50px;line-height:1;font-weight:700;font-variant-numeric:tabular-nums}
+.ring .num span{font-size:12px;color:var(--muted);margin-top:2px}
+.ring.zero .bar{stroke:var(--warn)} .ring.zero .num b{color:var(--warn)}
+.stats{display:flex;flex-direction:column;gap:10px;min-width:0}
+.stat .k{font-size:12px;color:var(--muted)}
+.stat .v{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat .v em{font-style:normal;font-size:22px;font-weight:600}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px}
+.nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;gap:8px}
+.nav h2{margin:0;font-weight:700;font-size:15px;text-align:center;font-variant-numeric:tabular-nums}
+.icon-btn{background:none;border:1px solid var(--line);color:var(--fg);width:40px;height:40px;border-radius:10px;font-size:18px;flex:none}
+.grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.dow{text-align:center;font-size:11px;color:var(--muted);padding:4px 0;font-weight:600}
+.dow.sun{color:var(--warn)}
+.mlabel{grid-column:1/-1;font-size:12px;font-weight:700;color:var(--accent);padding:8px 2px 2px}
+.day{aspect-ratio:1;border:none;border-radius:10px;background:transparent;color:var(--fg);font-family:var(--body);font-size:16px;font-variant-numeric:tabular-nums;transition:transform .12s}
+.day:active{transform:scale(.9)}
+.day.today{box-shadow:inset 0 0 0 1.5px var(--muted)}
+.day.on{background:var(--accent);color:var(--accent-fg);font-weight:700}
+.day.blocked{opacity:.35}
+.hint{font-size:12px;color:var(--muted);text-align:center;margin-top:10px;min-height:18px}
+.hint.err{color:var(--warn)}
+
+.list{display:flex;flex-direction:column;gap:10px}
+.row{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:8px}
+.row-top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.row-top b{font-size:15px}
+.row-top span{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.mini{display:flex;gap:3px}
+.mini i{flex:1;height:8px;border-radius:2px;background:var(--line)}
+.mini i.on{background:var(--accent)}
+.dates{font-size:12px;color:var(--muted);line-height:1.6}
+.empty{text-align:center;color:var(--muted);font-size:14px;padding:32px 0;line-height:1.6}
+
+.set{display:flex;flex-direction:column}
+.set-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 2px;border-bottom:1px solid var(--line)}
+.set-row:last-child,.set-row:has(+ .set-row[hidden]){border-bottom:none}
+.set-row .t{font-size:15px;font-weight:600}
+.set-row .d{font-size:12px;color:var(--muted);margin-top:2px}
+select,input[type=time]{font-family:var(--body);font-size:15px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+.stepper{display:flex;align-items:center;gap:10px}
+.stepper b{min-width:28px;text-align:center;font-size:17px;font-variant-numeric:tabular-nums}
+.switch{position:relative;width:51px;height:31px;flex:none}
+.switch input{opacity:0;width:100%;height:100%;margin:0;position:absolute;z-index:1}
+.switch span{position:absolute;inset:0;border-radius:31px;background:var(--line);transition:background .2s}
+.switch span::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.switch input:checked + span{background:var(--accent)}
+.switch input:checked + span::after{transform:translateX(20px)}
+.danger{background:none;border:1px solid var(--line);color:var(--warn);padding:12px;border-radius:12px;font-family:var(--body);font-size:14px;font-weight:600;width:100%}
+.danger.confirm{border-color:var(--warn);background:var(--warn);color:var(--surface)}
+.note{font-size:12px;color:var(--muted);line-height:1.6;padding:0 4px}
+
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabbar .inner{display:grid;grid-template-columns:repeat(3,1fr)}
+.tab{background:none;border:none;color:var(--muted);font-family:var(--body);font-size:11px;font-weight:600;padding:8px 0 6px;display:flex;flex-direction:column;align-items:center;gap:3px}
+.tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tab[aria-selected="true"]{color:var(--accent)}
+button{cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.ring .bar,.day,.switch span,.switch span::after{transition:none}}
+</style>
+</head>
+<body>
+
+<header class="appbar gutter"><div class="inner"><h1 id="title">출석</h1></div></header>
+
+<main class="gutter"><div class="inner">
+  <!-- 출석 -->
+  <section class="screen" id="screen-check">
+    <div class="hero">
+      <div class="ring" id="ring">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <circle class="track" cx="60" cy="60" r="52" stroke-width="10"></circle>
+          <circle class="bar" id="bar" cx="60" cy="60" r="52" stroke-width="10"></circle>
+        </svg>
+        <div class="num"><b id="left">15</b><span>회 남음</span></div>
+      </div>
+      <div class="stats">
+        <div class="stat"><div class="k">다녀온 날</div><div class="v"><em id="used">0</em> / <span id="limit">15</span>회</div></div>
+        <div class="stat"><div class="k">기간 종료까지</div><div class="v" id="dleft">-</div></div>
+        <div class="stat"><div class="k">마지막 방문</div><div class="v" id="last">-</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="nav">
+        <button class="icon-btn" id="prev" aria-label="이전 기간">‹</button>
+        <h2 id="period"></h2>
+        <button class="icon-btn" id="next" aria-label="다음 기간">›</button>
+      </div>
+      <div class="grid" id="grid"></div>
+      <div class="hint" id="hint" role="status">날짜를 누르면 체크, 다시 누르면 취소돼요.</div>
+    </div>
+  </section>
+
+  <!-- 기록 -->
+  <section class="screen" id="screen-log" hidden>
+    <div class="list" id="list"></div>
+  </section>
+
+  <!-- 설정 -->
+  <section class="screen" id="screen-set" hidden>
+    <div class="card set">
+      <div class="set-row">
+        <div><div class="t">기간 시작일</div><div class="d" id="range-desc">매달 20일 ~ 다음 달 19일</div></div>
+        <select id="startDay" aria-label="기간 시작일"></select>
+      </div>
+      <div class="set-row">
+        <div><div class="t">기간당 이용 횟수</div><div class="d">이용권에 정해진 횟수</div></div>
+        <div class="stepper">
+          <button class="icon-btn" id="limDown" aria-label="횟수 줄이기">−</button>
+          <b id="limVal">15</b>
+          <button class="icon-btn" id="limUp" aria-label="횟수 늘리기">+</button>
+        </div>
+      </div>
+    </div>
+    <div class="card set" id="remindCard">
+      <div class="set-row">
+        <div><div class="t">운동 알림</div><div class="d">매일 정한 시간에 남은 횟수를 알려 줘요</div></div>
+        <label class="switch"><input type="checkbox" id="remind" aria-label="운동 알림"><span></span></label>
+      </div>
+      <div class="set-row" id="timeRow">
+        <div class="t">알림 시간</div>
+        <input type="time" id="remindTime" value="19:00">
+      </div>
+    </div>
+    <div class="hint" id="setHint"></div>
+    <button class="danger" id="reset">모든 기록 지우기</button>
+    <p class="note">기록은 이 아이폰의 Safari 안에만 저장되고, 어디에도 전송되지 않아요. 홈 화면 아이콘을 삭제하거나 Safari 방문 기록·웹사이트 데이터를 지우면 기록도 함께 지워져요.</p>
+  </section>
+</div></main>
+
+<nav class="tabbar"><div class="inner" role="tablist">
+  <button class="tab" role="tab" data-tab="check" aria-selected="true">
+    <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"></rect><path d="M3.5 10h17M8 3v4M16 3v4M9 15l2 2 4-4"></path></svg>출석</button>
+  <button class="tab" role="tab" data-tab="log" aria-selected="false">
+    <svg viewBox="0 0 24 24"><path d="M5 19V11M12 19V5M19 19v-6"></path></svg>기록</button>
+  <button class="tab" role="tab" data-tab="set" aria-selected="false">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M12 2.5v3M12 18.5v3M4.2 6.5l2.6 1.5M17.2 16l2.6 1.5M4.2 17.5l2.6-1.5M17.2 8l2.6-1.5"></path></svg>설정</button>
+</div></nav>
+
+<script src="app.js"></script>
+<script>
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
+</script>
+</body>
+</html>
